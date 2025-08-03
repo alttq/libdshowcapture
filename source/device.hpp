@@ -106,15 +106,16 @@ struct HDevice {
 
 	bool CreateGraph();
 	bool FindCrossbar(IBaseFilter *filter, IBaseFilter **crossbar);
-	bool ConnectPins(const GUID &category, const GUID &type,
-			 IBaseFilter *filter, IBaseFilter *capture);
-	bool RenderFilters(const GUID &category, const GUID &type,
-			   IBaseFilter *filter, IBaseFilter *capture);
-	void SetAudioBuffering(int bufferingMs);
-	bool ConnectFilters();
-	void DisconnectFilters();
-	Result Start();
-	void Stop();
+        bool ConnectPins(const GUID &category, const GUID &type,
+                         IBaseFilter *filter, IBaseFilter *capture);
+        bool RenderFilters(const GUID &category, const GUID &type,
+                           IBaseFilter *filter, IBaseFilter *capture);
+        void SetVideoBuffering(int bufferingMs);
+        void SetAudioBuffering(int bufferingMs);
+        bool ConnectFilters();
+        void DisconnectFilters();
+        Result Start();
+        void Stop();
 };
 
 }; /* namespace DShow */

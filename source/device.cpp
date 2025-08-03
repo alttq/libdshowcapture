@@ -710,7 +710,7 @@ bool HDevice::ConnectPins(const GUID &category, const GUID &type,
 }
 
 bool HDevice::RenderFilters(const GUID &category, const GUID &type,
-			    IBaseFilter *filter, IBaseFilter *capture)
+                            IBaseFilter *filter, IBaseFilter *capture)
 {
 	HRESULT hr;
 
@@ -724,14 +724,65 @@ bool HDevice::RenderFilters(const GUID &category, const GUID &type,
 		return false;
 	}
 
-	return true;
+        return true;
+}
+
+void HDevice::SetVideoBuffering(int bufferingMs)
+{
+        ComPtr<IPin> pin;
+        bool success = GetFilterPin(videoFilter, MEDIATYPE_Video,
+                                    PIN_CATEGORY_CAPTURE, PINDIR_OUTPUT, &pin);
+        if (!success)
+                return;
+
+        ComQIPtr<IAMStreamConfig> config(pin);
+        if (!config)
+                return;
+
+        ComQIPtr<IAMBufferNegotiation> neg(pin);
+        if (!neg)
+                return;
+
+        MediaTypePtr mt;
+        if (FAILED(config->GetFormat(&mt)))
+                return;
+
+        if (mt->formattype != FORMAT_VideoInfo &&
+            mt->formattype != FORMAT_VideoInfo2)
+                return;
+
+        if (mt->cbFormat < sizeof(VIDEOINFOHEADER))
+                return;
+
+        VIDEOINFOHEADER *vih = (VIDEOINFOHEADER *)mt->pbFormat;
+
+        LONG height = vih->bmiHeader.biHeight;
+        if (height < 0)
+                height = -height;
+
+        uint64_t frameSize = (uint64_t)vih->bmiHeader.biWidth *
+                             (uint64_t)height *
+                             (uint64_t)vih->bmiHeader.biBitCount / 8ULL;
+        uint64_t fps = 10000000ULL / (uint64_t)vih->AvgTimePerFrame;
+        uint64_t bytesPerSec = frameSize * fps;
+
+        ALLOCATOR_PROPERTIES props;
+        props.cBuffers = -1;
+        props.cbBuffer = (LONG)(bytesPerSec * (uint64_t)bufferingMs / 1000ULL);
+        props.cbAlign = -1;
+        props.cbPrefix = -1;
+        HRESULT hr = neg->SuggestAllocatorProperties(&props);
+        if (FAILED(hr))
+                WarningHR(L"Could not set allocator properties on video "
+                          L"capture pin",
+                          hr);
 }
 
 void HDevice::SetAudioBuffering(int bufferingMs)
 {
-	ComPtr<IPin> pin;
-	bool success = GetFilterPin(audioFilter, MEDIATYPE_Audio,
-				    PIN_CATEGORY_CAPTURE, PINDIR_OUTPUT, &pin);
+        ComPtr<IPin> pin;
+        bool success = GetFilterPin(audioFilter, MEDIATYPE_Audio,
+                                    PIN_CATEGORY_CAPTURE, PINDIR_OUTPUT, &pin);
 	if (!success)
 		return;
 
@@ -774,14 +825,19 @@ bool HDevice::ConnectFilters()
 	    !EnsureInactive(L"ConnectFilters"))
 		return false;
 
-	if (videoCapture != NULL) {
-		/* use hardware tonemapper for narrow format (SDR), not wide (HDR) */
-		const bool enable_tonemapper = videoConfig.format !=
-					       VideoFormat::P010;
-		SetVendorTonemapperUsage(videoFilter, enable_tonemapper);
+        if (videoCapture != NULL) {
+                /* use hardware tonemapper for narrow format (SDR), not wide (HDR) */
+                const bool enable_tonemapper = videoConfig.format !=
+                                               VideoFormat::P010;
+                SetVendorTonemapperUsage(videoFilter, enable_tonemapper);
 
-		success = ConnectPins(PIN_CATEGORY_CAPTURE, MEDIATYPE_Video,
-				      videoFilter, videoCapture);
+                long bufferMs = (long)(videoConfig.frameInterval / 10000);
+                if (bufferMs <= 0)
+                        bufferMs = 1;
+                SetVideoBuffering((int)bufferMs);
+
+                success = ConnectPins(PIN_CATEGORY_CAPTURE, MEDIATYPE_Video,
+                                      videoFilter, videoCapture);
 		if (!success) {
 			success = RenderFilters(PIN_CATEGORY_CAPTURE,
 						MEDIATYPE_Video, videoFilter,
