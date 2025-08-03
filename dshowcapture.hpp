@@ -257,10 +257,17 @@ public:
 struct VideoEncoderConfig : DeviceId {
 	int fpsNumerator;
 	int fpsDenominator;
-	int bitrate;
-	int keyframeInterval;
-	int cx;
-	int cy;
+        int bitrate;
+        int keyframeInterval;
+        int cx;
+        int cy;
+
+        /**
+                 * Desired number of output buffers. Use lower values
+                 * (such as 1 or 2) for low-latency encoding. Defaults to 4
+                 * when set to 0.
+                 */
+        int buffers = 0;
 };
 
 struct EncoderPacket {

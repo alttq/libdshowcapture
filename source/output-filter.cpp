@@ -35,11 +35,12 @@ namespace DShow {
 #define VIDEO_PIN_NAME L"Video Output"
 #define AUDIO_PIN_NAME L"Audio Output"
 
-OutputPin::OutputPin(OutputFilter *filter_) : refCount(0), filter(filter_) {}
+OutputPin::OutputPin(OutputFilter *filter_, int buffers)
+        : refCount(0), filter(filter_), bufferCount(buffers) {}
 
 OutputPin::OutputPin(OutputFilter *filter_, VideoFormat format, int cx, int cy,
-		     long long interval)
-	: OutputPin(filter_)
+                     long long interval, int buffers)
+        : OutputPin(filter_, buffers)
 {
 	curCX = cx;
 	curCY = cy;
@@ -438,19 +439,19 @@ bool OutputPin::AllocateBuffers(IPin *target, bool connecting)
 	WORD bits = VFormatBits(curVFormat);
 	bufSize = cx * cy * bits / 8;
 
-	ALLOCATOR_PROPERTIES props;
+        ALLOCATOR_PROPERTIES props;
 
-	hr = memInput->GetAllocatorRequirements(&props);
-	if (hr == E_NOTIMPL) {
-		props.cBuffers = 4;
-		props.cbAlign = 32;
-		props.cbPrefix = 0;
+        hr = memInput->GetAllocatorRequirements(&props);
+        if (hr == E_NOTIMPL) {
+                props.cbAlign = 32;
+                props.cbPrefix = 0;
 
-	} else if (FAILED(hr)) {
-		return false;
-	}
+        } else if (FAILED(hr)) {
+                return false;
+        }
 
-	props.cbBuffer = (long)bufSize;
+        props.cBuffers = bufferCount;
+        props.cbBuffer = (long)bufSize;
 
 	ALLOCATOR_PROPERTIES actual;
 	hr = allocator->SetProperties(&props, &actual);
@@ -649,22 +650,22 @@ public:
 	}
 };
 
-OutputFilter::OutputFilter()
-	: refCount(0),
-	  state(State_Stopped),
-	  graph(nullptr),
-	  pin(new OutputPin(this)),
-	  misc(new SourceMiscFlags)
+OutputFilter::OutputFilter(int buffers)
+        : refCount(0),
+          state(State_Stopped),
+          graph(nullptr),
+          pin(new OutputPin(this, buffers)),
+          misc(new SourceMiscFlags)
 {
 }
 
 OutputFilter::OutputFilter(VideoFormat format, int cx, int cy,
-			   long long interval)
-	: refCount(0),
-	  state(State_Stopped),
-	  graph(nullptr),
-	  pin(new OutputPin(this, format, cx, cy, interval)),
-	  misc(new SourceMiscFlags)
+                           long long interval, int buffers)
+        : refCount(0),
+          state(State_Stopped),
+          graph(nullptr),
+          pin(new OutputPin(this, format, cx, cy, interval, buffers)),
+          misc(new SourceMiscFlags)
 {
 }
 

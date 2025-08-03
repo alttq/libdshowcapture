@@ -45,19 +45,20 @@ class OutputPin : public IPin, public IAMStreamConfig, public IKsPropertySet {
 	ComPtr<IPin> connectedPin;
 	OutputFilter *filter;
 	volatile bool flushing = false;
-	ComPtr<IMemAllocator> allocator;
-	ComPtr<IMediaSample> sample;
-	size_t bufSize;
+        ComPtr<IMemAllocator> allocator;
+        ComPtr<IMediaSample> sample;
+        size_t bufSize;
+        int bufferCount = 4;
 
 	bool IsValidMediaType(const AM_MEDIA_TYPE *pmt) const;
 
 	bool AllocateBuffers(IPin *target, bool connecting = false);
 
 public:
-	OutputPin(OutputFilter *filter);
-	OutputPin(OutputFilter *filter, VideoFormat format, int cx, int cy,
-		  long long interval);
-	virtual ~OutputPin();
+        OutputPin(OutputFilter *filter, int buffers = 4);
+        OutputPin(OutputFilter *filter, VideoFormat format, int cx, int cy,
+                  long long interval, int buffers = 4);
+        virtual ~OutputPin();
 
 	STDMETHODIMP QueryInterface(REFIID riid, void **ppv);
 	STDMETHODIMP_(ULONG) AddRef();
@@ -144,8 +145,9 @@ protected:
 	ComPtr<IReferenceClock> clock;
 
 public:
-	OutputFilter();
-	OutputFilter(VideoFormat format, int cx, int cy, long long interval);
+        OutputFilter(int buffers = 4);
+        OutputFilter(VideoFormat format, int cx, int cy, long long interval,
+                     int buffers = 4);
 	virtual ~OutputFilter();
 
 	// IUnknown methods
@@ -183,8 +185,11 @@ public:
 	}
 
 	inline int GetCX() const { return pin->GetCX(); }
-	inline int GetCY() const { return pin->GetCY(); }
-	inline long long GetInterval() const { return pin->GetInterval(); }
+        inline int GetCY() const { return pin->GetCY(); }
+        inline long long GetInterval() const { return pin->GetInterval(); }
+
+        inline void SetBufferCount(int buffers) { pin->bufferCount = buffers; }
+        inline int GetBufferCount() const { return pin->bufferCount; }
 
 	inline void AddVideoFormat(VideoFormat format, int cx, int cy,
 				   long long interval)

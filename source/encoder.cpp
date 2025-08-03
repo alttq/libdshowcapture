@@ -215,9 +215,10 @@ bool HVideoEncoder::SetupEncoder(IBaseFilter *filter)
 
 	encoder = filter;
 	device = std::move(deviceFilter);
-	capture = new CaptureFilter(captureInfo);
-	output = new OutputFilter(VideoFormat::YV12, config.cx, config.cy,
-				  frameTime);
+        capture = new CaptureFilter(captureInfo);
+        int buffers = config.buffers ? config.buffers : 4;
+        output = new OutputFilter(VideoFormat::YV12, config.cx, config.cy,
+                                  frameTime, buffers);
 
 	graph->AddFilter(output, nullptr);
 	graph->AddFilter(device, L"Device Filter");
