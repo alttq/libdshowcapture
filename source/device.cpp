@@ -31,17 +31,26 @@ namespace DShow {
 /* device-vendor.cpp API */
 extern bool IsVendorVideoHDR(IKsPropertySet *propertySet);
 extern void SetVendorVideoFormat(IKsPropertySet *propertySet,
-				 bool hevcTrueAvcFalse);
+                                 bool hevcTrueAvcFalse);
 extern void SetVendorTonemapperUsage(IBaseFilter *filter, bool enable);
 
 bool SetRocketEnabled(IBaseFilter *encoder, bool enable);
 
-HDevice::HDevice() : initialized(false), active(false) {}
+HDevice::HDevice()
+        : initialized(false),
+          active(false),
+          clockless(false),
+          droppedFrames(0),
+          timingIrregularities(0),
+          lastVideoStop(0),
+          haveLastVideoStop(false)
+{
+}
 
 HDevice::~HDevice()
 {
-	if (active)
-		Stop();
+        if (active)
+                Stop();
 
 	DisconnectFilters();
 
@@ -54,9 +63,25 @@ HDevice::~HDevice()
 	 * you'll have to unplug/replug the device to get it working again.
 	 */
 	if (!!rocketEncoder) {
-		Sleep(ROCKET_WAIT_TIME_MS);
-		SetRocketEnabled(rocketEncoder, false);
-	}
+                Sleep(ROCKET_WAIT_TIME_MS);
+                SetRocketEnabled(rocketEncoder, false);
+        }
+}
+
+void HDevice::SetClockless(bool clock)
+{
+        clockless = clock;
+        droppedFrames = 0;
+        timingIrregularities = 0;
+        lastVideoStop = 0;
+        haveLastVideoStop = false;
+}
+
+void HDevice::GetTimingStats(unsigned long &dropped,
+                             unsigned long &irregular) const
+{
+        dropped = droppedFrames;
+        irregular = timingIrregularities;
 }
 
 bool HDevice::EnsureInitialized(const wchar_t *func)
@@ -163,8 +188,28 @@ void HDevice::Receive(bool isVideo, IMediaSample *sample)
 	if (FAILED(sample->GetPointer(&ptr)))
 		return;
 
-	long long startTime, stopTime;
-	bool hasTime = SUCCEEDED(sample->GetTime(&startTime, &stopTime));
+        long long startTime, stopTime;
+        bool hasTime = SUCCEEDED(sample->GetTime(&startTime, &stopTime));
+
+        if (clockless && isVideo && hasTime) {
+                long long expected = videoConfig.frameInterval;
+                if (haveLastVideoStop) {
+                        long long delta = startTime - lastVideoStop;
+                        if (expected > 0) {
+                                if (delta > expected * 3 / 2) {
+                                        droppedFrames++;
+                                        Warning(L"Dropped frame detected: expected %lldns, got %lldns",
+                                                expected, delta);
+                                } else if (delta < expected / 2) {
+                                        timingIrregularities++;
+                                        Warning(L"Timing irregularity detected: expected %lldns, got %lldns",
+                                                expected, delta);
+                                }
+                        }
+                }
+                lastVideoStop = stopTime;
+                haveLastVideoStop = true;
+        }
 
 	if (encoded) {
 		EncodedData &data = isVideo ? encodedVideo : encodedAudio;
@@ -869,10 +914,17 @@ bool HDevice::ConnectFilters()
 		}
 	}
 
-	if (success)
-		LogFilters(graph);
+        if (success) {
+                LogFilters(graph);
 
-	return success;
+                if (clockless) {
+                        ComQIPtr<IMediaFilter> mf(graph);
+                        if (mf)
+                                mf->SetSyncSource(nullptr);
+                }
+        }
+
+        return success;
 }
 
 void HDevice::DisconnectFilters()
