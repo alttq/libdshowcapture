@@ -188,14 +188,20 @@ struct VideoConfig : Config {
 };
 
 struct AudioConfig : Config {
-	AudioProc callback;
+        AudioProc callback;
 
-	/**
-		 * Use the audio attached to the video device
-		 *
-		 * (name/path member variables will be ignored)
-		 */
-	bool useVideoDevice = false;
+        /**
+                 * Set to true to completely disable audio. When disabled, no
+                 * audio filters will be created or connected.
+                 */
+        bool disabled = false;
+
+        /**
+                 * Use the audio attached to the video device
+                 *
+                 * (name/path member variables will be ignored)
+                 */
+        bool useVideoDevice = false;
 
 	/** Use separate filter for audio */
 	bool useSeparateAudioFilter = false;
