@@ -24,14 +24,26 @@
 
 #include <string>
 #include <vector>
+#include <queue>
+#include <thread>
+#include <mutex>
+#include <condition_variable>
 using namespace std;
 
 namespace DShow {
 
 struct EncodedData {
-	long long lastStartTime = 0;
-	long long lastStopTime = 0;
-	vector<unsigned char> bytes;
+        long long lastStartTime = 0;
+        long long lastStopTime = 0;
+        vector<unsigned char> bytes;
+};
+
+struct FrameData {
+        bool video = false;
+        vector<unsigned char> bytes;
+        long long startTime = 0;
+        long long stopTime = 0;
+        long rotation = 0;
 };
 
 struct EncodedDevice {
@@ -69,8 +81,14 @@ struct HDevice {
 	bool initialized;
 	bool active;
 
-	EncodedData encodedVideo;
-	EncodedData encodedAudio;
+        EncodedData encodedVideo;
+        EncodedData encodedAudio;
+
+        queue<FrameData> callbackQueue;
+        mutex callbackMutex;
+        condition_variable callbackCond;
+        thread callbackThread;
+        bool callbackStop = false;
 
 	HDevice();
 	~HDevice();
@@ -82,9 +100,11 @@ struct HDevice {
 	bool EnsureActive(const wchar_t *func);
 	bool EnsureInactive(const wchar_t *func);
 
-	inline void SendToCallback(bool video, unsigned char *data, size_t size,
-				   long long startTime, long long stopTime,
-				   long rotation);
+        inline void SendToCallback(bool video, unsigned char *data, size_t size,
+                                   long long startTime, long long stopTime,
+                                   long rotation);
+
+        void CallbackLoop();
 
 	void Receive(bool video, IMediaSample *sample);
 
