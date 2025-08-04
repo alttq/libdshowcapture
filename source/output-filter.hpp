@@ -55,9 +55,9 @@ class OutputPin : public IPin, public IAMStreamConfig, public IKsPropertySet {
 	bool AllocateBuffers(IPin *target, bool connecting = false);
 
 public:
-        OutputPin(OutputFilter *filter, int buffers = 4);
+        OutputPin(OutputFilter *filter, int buffers = 1);
         OutputPin(OutputFilter *filter, VideoFormat format, int cx, int cy,
-                  long long interval, int buffers = 4);
+                  long long interval, int buffers = 1);
         virtual ~OutputPin();
 
 	STDMETHODIMP QueryInterface(REFIID riid, void **ppv);
@@ -145,9 +145,9 @@ protected:
 	ComPtr<IReferenceClock> clock;
 
 public:
-        OutputFilter(int buffers = 4);
+        OutputFilter(int buffers = 1);
         OutputFilter(VideoFormat format, int cx, int cy, long long interval,
-                     int buffers = 4);
+                     int buffers = 1);
 	virtual ~OutputFilter();
 
 	// IUnknown methods
@@ -188,7 +188,7 @@ public:
         inline int GetCY() const { return pin->GetCY(); }
         inline long long GetInterval() const { return pin->GetInterval(); }
 
-        inline void SetBufferCount(int buffers) { pin->bufferCount = buffers; }
+        inline void zSetBufferCount(int buffers) { pin->bufferCount = buffers; }
         inline int GetBufferCount() const { return pin->bufferCount; }
 
 	inline void AddVideoFormat(VideoFormat format, int cx, int cy,
