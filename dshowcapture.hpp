@@ -165,8 +165,8 @@ struct Config : DeviceId {
 };
 
 struct VideoConfig : Config {
-	VideoProc callback;
-	ReactivateProc reactivateCallback;
+        VideoProc callback;
+        ReactivateProc reactivateCallback;
 
 	/** Desired width/height of video. */
 	int cx = 0, cy_abs = 0;
@@ -174,14 +174,17 @@ struct VideoConfig : Config {
 	/** Whether or not cy was negative. */
 	bool cy_flip = false;
 
-	/** Desired frame interval (in 100-nanosecond units) */
-	long long frameInterval = 0;
+        /** Desired frame interval (in 100-nanosecond units) */
+        long long frameInterval = 0;
 
 	/** Internal video format. */
 	VideoFormat internalFormat = VideoFormat::Any;
 
-	/** Desired video format. */
-	VideoFormat format = VideoFormat::Any;
+        /** Desired video format. */
+        VideoFormat format = VideoFormat::Any;
+
+        /** Desired buffer length in milliseconds */
+        int buffer = 0;
 };
 
 struct AudioConfig : Config {
