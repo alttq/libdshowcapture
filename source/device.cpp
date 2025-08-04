@@ -767,7 +767,7 @@ void HDevice::SetVideoBuffering(int bufferingMs)
         uint64_t bytesPerSec = frameSize * fps;
 
         ALLOCATOR_PROPERTIES props;
-        props.cBuffers = -1;
+        props.cBuffers = 1;
         props.cbBuffer = (LONG)(bytesPerSec * (uint64_t)bufferingMs / 1000ULL);
         props.cbAlign = -1;
         props.cbPrefix = -1;
@@ -831,7 +831,8 @@ bool HDevice::ConnectFilters()
                                                VideoFormat::P010;
                 SetVendorTonemapperUsage(videoFilter, enable_tonemapper);
 
-                long bufferMs = (long)(videoConfig.frameInterval / 10000);
+                long bufferMs = videoConfig.buffer ? videoConfig.buffer
+                                                  : (long)(videoConfig.frameInterval / 10000);
                 if (bufferMs <= 0)
                         bufferMs = 1;
                 SetVideoBuffering((int)bufferMs);
