@@ -580,8 +580,12 @@ bool HDevice::SetAudioConfig(AudioConfig *config)
 	audioOutput.Release();
 	audioMediaType = NULL;
 
-	if (!config)
+	if (!config || !config->enableAudio) {
+		audioConfig = {};
+		audioConfig.enableAudio = false;
+		encodedAudio = {};
 		return true;
+	}
 
 	if (!config->useVideoDevice && !config->useSeparateAudioFilter &&
 	    config->name.empty() && config->path.empty()) {
@@ -845,7 +849,7 @@ bool HDevice::ConnectFilters()
 		}
 	}
 
-	if ((audioCapture || audioOutput) && success) {
+	if (audioConfig.enableAudio && (audioCapture || audioOutput) && success) {
 		IBaseFilter *filter = (audioCapture != nullptr)
 					      ? audioCapture.Get()
 					      : audioOutput.Get();

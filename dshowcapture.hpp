@@ -211,6 +211,9 @@ struct AudioConfig : Config {
 
 	/** Desired buffer */
 	int buffer = 0;
+
+	/** Enable audio stream */
+	bool enableAudio = true;
 };
 
 class DSHOWCAPTURE_EXPORT Device {
@@ -267,7 +270,7 @@ struct VideoEncoderConfig : DeviceId {
                  * (such as 1 or 2) for low-latency encoding. Defaults to 4
                  * when set to 0.
                  */
-        int buffers = 0;
+	int buffers = 0;
 };
 
 struct EncoderPacket {
