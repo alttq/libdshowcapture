@@ -845,7 +845,7 @@ bool HDevice::ConnectFilters()
 		}
 	}
 
-	if ((audioCapture || audioOutput) && success) {
+        if (!audioConfig.disabled && (audioCapture || audioOutput) && success) {
 		IBaseFilter *filter = (audioCapture != nullptr)
 					      ? audioCapture.Get()
 					      : audioOutput.Get();
