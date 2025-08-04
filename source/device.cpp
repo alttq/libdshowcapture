@@ -90,18 +90,55 @@ bool HDevice::EnsureInactive(const wchar_t *func)
 }
 
 inline void HDevice::SendToCallback(bool video, unsigned char *data,
-				    size_t size, long long startTime,
-				    long long stopTime, long rotation)
+                                    size_t size, long long startTime,
+                                    long long stopTime, long rotation)
 {
-	if (!size)
-		return;
+        if (!size)
+                return;
 
-	if (video)
-		videoConfig.callback(videoConfig, data, size, startTime,
-				     stopTime, rotation);
-	else
-		audioConfig.callback(audioConfig, data, size, startTime,
-				     stopTime);
+        FrameData frame;
+        frame.video = video;
+        frame.bytes.assign(data, data + size);
+        frame.startTime = startTime;
+        frame.stopTime = stopTime;
+        frame.rotation = rotation;
+
+        {
+                lock_guard<mutex> lock(callbackMutex);
+                callbackQueue.push(std::move(frame));
+        }
+        callbackCond.notify_one();
+}
+
+void HDevice::CallbackLoop()
+{
+        while (true) {
+                FrameData frame;
+
+                {
+                        unique_lock<mutex> lock(callbackMutex);
+                        callbackCond.wait(lock, [this] {
+                                return callbackStop || !callbackQueue.empty();
+                        });
+
+                        if (callbackStop && callbackQueue.empty())
+                                break;
+
+                        frame = std::move(callbackQueue.front());
+                        callbackQueue.pop();
+                }
+
+                if (frame.video)
+                        videoConfig.callback(videoConfig, frame.bytes.data(),
+                                             frame.bytes.size(),
+                                             frame.startTime, frame.stopTime,
+                                             frame.rotation);
+                else
+                        audioConfig.callback(audioConfig, frame.bytes.data(),
+                                             frame.bytes.size(),
+                                             frame.startTime,
+                                             frame.stopTime);
+        }
 }
 
 void HDevice::Receive(bool isVideo, IMediaSample *sample)
@@ -896,7 +933,7 @@ void HDevice::DisconnectFilters()
 
 Result HDevice::Start()
 {
-	HRESULT hr;
+        HRESULT hr;
 
 	if (!EnsureInitialized(L"Start") || !EnsureInactive(L"Start"))
 		return Result::Error;
@@ -904,28 +941,42 @@ Result HDevice::Start()
 	if (!!rocketEncoder)
 		Sleep(ROCKET_WAIT_TIME_MS);
 
-	hr = control->Run();
+        hr = control->Run();
 
-	if (FAILED(hr)) {
-		if (hr == (HRESULT)0x8007001F) {
-			WarningHR(L"Run failed, device already in use", hr);
-			return Result::InUse;
-		} else {
-			WarningHR(L"Run failed", hr);
-			return Result::Error;
-		}
-	}
+        if (FAILED(hr)) {
+                if (hr == (HRESULT)0x8007001F) {
+                        WarningHR(L"Run failed, device already in use", hr);
+                        return Result::InUse;
+                } else {
+                        WarningHR(L"Run failed", hr);
+                        return Result::Error;
+                }
+        }
 
-	active = true;
-	return Result::Success;
+        callbackStop = false;
+        callbackThread = thread(&HDevice::CallbackLoop, this);
+
+        active = true;
+        return Result::Success;
 }
 
 void HDevice::Stop()
 {
-	if (active) {
-		control->Stop();
-		active = false;
-	}
+        if (active) {
+                control->Stop();
+                active = false;
+        }
+
+        callbackStop = true;
+        callbackCond.notify_one();
+        if (callbackThread.joinable())
+                callbackThread.join();
+
+        {
+                lock_guard<mutex> lock(callbackMutex);
+                queue<FrameData> empty;
+                swap(callbackQueue, empty);
+        }
 }
 
 } /* namespace DShow */
