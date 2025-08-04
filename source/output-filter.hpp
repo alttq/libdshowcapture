@@ -48,16 +48,16 @@ class OutputPin : public IPin, public IAMStreamConfig, public IKsPropertySet {
         ComPtr<IMemAllocator> allocator;
         ComPtr<IMediaSample> sample;
         size_t bufSize;
-        int bufferCount = 4;
+        int bufferCount = 2;
 
 	bool IsValidMediaType(const AM_MEDIA_TYPE *pmt) const;
 
 	bool AllocateBuffers(IPin *target, bool connecting = false);
 
 public:
-        OutputPin(OutputFilter *filter, int buffers = 4);
+        OutputPin(OutputFilter *filter, int buffers = 2);
         OutputPin(OutputFilter *filter, VideoFormat format, int cx, int cy,
-                  long long interval, int buffers = 4);
+                  long long interval, int buffers = 2);
         virtual ~OutputPin();
 
 	STDMETHODIMP QueryInterface(REFIID riid, void **ppv);
@@ -145,9 +145,9 @@ protected:
 	ComPtr<IReferenceClock> clock;
 
 public:
-        OutputFilter(int buffers = 4);
+        OutputFilter(int buffers = 2);
         OutputFilter(VideoFormat format, int cx, int cy, long long interval,
-                     int buffers = 4);
+                     int buffers = 2);
 	virtual ~OutputFilter();
 
 	// IUnknown methods

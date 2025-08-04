@@ -216,7 +216,7 @@ bool HVideoEncoder::SetupEncoder(IBaseFilter *filter)
 	encoder = filter;
 	device = std::move(deviceFilter);
         capture = new CaptureFilter(captureInfo);
-        int buffers = config.buffers ? config.buffers : 4;
+        int buffers = config.buffers ? config.buffers : 2;
         output = new OutputFilter(VideoFormat::YV12, config.cx, config.cy,
                                   frameTime, buffers);
 
