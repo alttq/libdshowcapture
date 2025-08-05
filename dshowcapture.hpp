@@ -223,7 +223,8 @@ struct AudioConfig : Config {
 };
 
 class DSHOWCAPTURE_EXPORT Device {
-	HDevice *context;
+        HDevice *context;
+        bool clockless = false;
 
 public:
 	Device(InitGraph initialize = InitGraph::False);
@@ -231,8 +232,21 @@ public:
 
 	bool Valid() const;
 
-	bool ResetGraph();
-	void ShutdownGraph();
+        bool ResetGraph();
+        void ShutdownGraph();
+
+        /**
+                 * Enable or disable use of the graph's reference clock.
+                 * When disabled, filters operate asynchronously.
+                 */
+        void SetClockless(bool clockless);
+
+        /**
+                 * Retrieves current dropped frame and timing irregularity
+                 * statistics when running without a clock.
+                 */
+        void GetTimingStats(unsigned long &dropped,
+                             unsigned long &irregular) const;
 
 	bool SetVideoConfig(VideoConfig *config);
 	bool SetAudioConfig(AudioConfig *config);
@@ -259,8 +273,8 @@ public:
 		 */
 	void OpenDialog(void *hwnd, DialogType type) const;
 
-	static bool EnumVideoDevices(std::vector<VideoDevice> &devices);
-	static bool EnumAudioDevices(std::vector<AudioDevice> &devices);
+        static bool EnumVideoDevices(std::vector<VideoDevice> &devices);
+        static bool EnumAudioDevices(std::vector<AudioDevice> &devices);
 };
 
 struct VideoEncoderConfig : DeviceId {

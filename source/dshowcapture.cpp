@@ -30,8 +30,9 @@ namespace DShow {
 
 Device::Device(InitGraph initialize) : context(new HDevice)
 {
-	if (initialize == InitGraph::True)
-		context->CreateGraph();
+        context->SetClockless(clockless);
+        if (initialize == InitGraph::True)
+                context->CreateGraph();
 }
 
 Device::~Device()
@@ -46,17 +47,19 @@ bool Device::Valid() const
 
 bool Device::ResetGraph()
 {
-	/* cheap and easy way to clear all the filters */
-	delete context;
-	context = new HDevice;
+        /* cheap and easy way to clear all the filters */
+        delete context;
+        context = new HDevice;
+        context->SetClockless(clockless);
 
-	return context->CreateGraph();
+        return context->CreateGraph();
 }
 
 void Device::ShutdownGraph()
 {
-	delete context;
-	context = new HDevice;
+        delete context;
+        context = new HDevice;
+        context->SetClockless(clockless);
 }
 
 bool Device::SetVideoConfig(VideoConfig *config)
@@ -71,17 +74,29 @@ bool Device::SetAudioConfig(AudioConfig *config)
 
 bool Device::ConnectFilters()
 {
-	return context->ConnectFilters();
+        return context->ConnectFilters();
 }
 
 Result Device::Start()
 {
-	return context->Start();
+        return context->Start();
 }
 
 void Device::Stop()
 {
-	context->Stop();
+        context->Stop();
+}
+
+void Device::SetClockless(bool noClock)
+{
+        clockless = noClock;
+        context->SetClockless(noClock);
+}
+
+void Device::GetTimingStats(unsigned long &dropped,
+                             unsigned long &irregular) const
+{
+        context->GetTimingStats(dropped, irregular);
 }
 
 bool Device::GetVideoConfig(VideoConfig &config) const

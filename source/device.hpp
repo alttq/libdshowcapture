@@ -65,9 +65,15 @@ struct HDevice {
 	bool encodedDevice = false;
 	bool rotatableDevice = false;
 	bool deviceHdrSignal = false;
-	bool reactivatePending = false;
-	bool initialized;
-	bool active;
+        bool reactivatePending = false;
+        bool initialized;
+        bool active;
+
+        bool clockless = false;
+        unsigned long droppedFrames = 0;
+        unsigned long timingIrregularities = 0;
+        long long lastVideoStop = 0;
+        bool haveLastVideoStop = false;
 
 	EncodedData encodedVideo;
 	EncodedData encodedAudio;
@@ -82,11 +88,15 @@ struct HDevice {
 	bool EnsureActive(const wchar_t *func);
 	bool EnsureInactive(const wchar_t *func);
 
-	inline void SendToCallback(bool video, unsigned char *data, size_t size,
-				   long long startTime, long long stopTime,
-				   long rotation);
+        inline void SendToCallback(bool video, unsigned char *data, size_t size,
+                                   long long startTime, long long stopTime,
+                                   long rotation);
 
-	void Receive(bool video, IMediaSample *sample);
+        void Receive(bool video, IMediaSample *sample);
+
+        void SetClockless(bool clockless);
+        void GetTimingStats(unsigned long &dropped,
+                             unsigned long &irregular) const;
 
 	bool SetupEncodedVideoCapture(IBaseFilter *filter, VideoConfig &config,
 				      const EncodedDevice &info);
